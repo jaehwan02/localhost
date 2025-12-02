@@ -40,6 +40,12 @@ export function AdminSidebar() {
             플레이어 관리
           </Link>
         </Button>
+        <Button variant="ghost" className="w-full justify-start" asChild>
+          <Link href="/admin/announcements">
+            <span className="mr-2">📢</span>
+            공지사항 관리
+          </Link>
+        </Button>
       </nav>
       <div className="p-4 border-t border-border">
         <Button variant="outline" className="w-full" asChild>

@@ -39,7 +39,19 @@ export default function AdminAuctionPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // Auto-close all active auctions before creating a new one
+    const { error: closeError } = await supabase
+      .from("auctions")
+      .update({ status: "completed" })
+      .eq("status", "active");
+
+    if (closeError) {
+      console.error("Error closing active auctions:", closeError);
+      alert(`기존 경매 종료 실패: ${closeError.message}`);
+      return;
+    }
+
     // Calculate end time
     const endTime = new Date();
     endTime.setMinutes(endTime.getMinutes() + newAuction.duration_minutes);
@@ -52,23 +64,41 @@ export default function AdminAuctionPage() {
     });
 
     if (error) {
-      alert("경매 생성 실패");
+      console.error("Auction creation error:", JSON.stringify(error, null, 2));
+      alert(`경매 생성 실패: ${error.message || error.code || JSON.stringify(error)}`);
     } else {
       setNewAuction({ item_name: "", start_price: 0, duration_minutes: 10 });
       fetchAuctions();
+      alert("새 경매가 시작되었습니다!");
     }
   };
 
   const handleStop = async (id: number) => {
     if (!confirm("경매를 종료하시겠습니까?")) return;
-    
+
     const { error } = await supabase
       .from("auctions")
       .update({ status: "completed" })
       .eq("id", id);
-      
+
     if (error) alert("오류 발생");
     else fetchAuctions();
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("경매를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) return;
+
+    const { error } = await supabase
+      .from("auctions")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error("Auction deletion error:", error);
+      alert(`삭제 실패: ${error.message}`);
+    } else {
+      fetchAuctions();
+    }
   };
 
   return (
@@ -94,8 +124,9 @@ export default function AdminAuctionPage() {
               <label className="text-sm font-medium">시작가</label>
               <Input 
                 type="number" 
-                value={newAuction.start_price}
-                onChange={(e) => setNewAuction({ ...newAuction, start_price: parseInt(e.target.value) })}
+                value={newAuction.start_price === 0 ? "" : newAuction.start_price}
+                onChange={(e) => setNewAuction({ ...newAuction, start_price: e.target.value === "" ? 0 : parseInt(e.target.value) })}
+                placeholder="0"
                 required 
               />
             </div>
@@ -103,8 +134,9 @@ export default function AdminAuctionPage() {
               <label className="text-sm font-medium">진행 시간(분)</label>
               <Input 
                 type="number" 
-                value={newAuction.duration_minutes}
-                onChange={(e) => setNewAuction({ ...newAuction, duration_minutes: parseInt(e.target.value) })}
+                value={newAuction.duration_minutes === 0 ? "" : newAuction.duration_minutes}
+                onChange={(e) => setNewAuction({ ...newAuction, duration_minutes: e.target.value === "" ? 10 : parseInt(e.target.value) })}
+                placeholder="10"
                 required 
               />
             </div>
@@ -137,15 +169,26 @@ export default function AdminAuctionPage() {
                 <TableCell>{auction.start_price} 코인</TableCell>
                 <TableCell>{new Date(auction.end_time).toLocaleString()}</TableCell>
                 <TableCell className="text-right">
-                  {auction.status === "active" && (
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      onClick={() => handleStop(auction.id)}
-                    >
-                      종료
-                    </Button>
-                  )}
+                  <div className="flex justify-end gap-2">
+                    {auction.status === "active" && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleStop(auction.id)}
+                      >
+                        종료
+                      </Button>
+                    )}
+                    {auction.status === "completed" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(auction.id)}
+                      >
+                        삭제
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
