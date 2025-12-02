@@ -47,16 +47,49 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
-  if (
-    request.nextUrl.pathname !== "/" &&
-    !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth")
-  ) {
-    // no user, potentially respond by redirecting the user to the login page
+  // Redirect root to community
+  if (request.nextUrl.pathname === "/") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/community";
+    return NextResponse.redirect(url);
+  }
+
+  // Public routes that don't require authentication
+  const publicRoutes = [
+    '/community',
+    '/shop',
+    '/auction',
+    '/player',
+    '/auth',
+    '/login'
+  ];
+
+  const isPublicRoute = publicRoutes.some(route =>
+    request.nextUrl.pathname.startsWith(route)
+  );
+
+  // Redirect to login only if not a public route and user is not authenticated
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
+  }
+
+  // Check if user is trying to access admin routes
+  if (user && request.nextUrl.pathname.startsWith("/admin")) {
+    // Get user's role from teams table
+    const { data: team } = await supabase
+      .from('teams')
+      .select('role')
+      .eq('id', user.sub)
+      .single();
+
+    // If user is not an admin, redirect to community page
+    if (!team || team.role !== 'admin') {
+      const url = request.nextUrl.clone();
+      url.pathname = "/community";
+      return NextResponse.redirect(url);
+    }
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.

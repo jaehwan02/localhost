@@ -37,6 +37,7 @@ export async function POST(request: Request) {
         team_id: teamId,
         name: name,
         coins: 1000, // Default coins
+        role: 'user', // Explicitly set as regular user (not admin)
       });
 
       if (dbError) {

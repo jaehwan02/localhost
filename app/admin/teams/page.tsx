@@ -26,6 +26,7 @@ interface Team {
   team_id: string;
   name: string;
   coins: number;
+  role: 'user' | 'admin';
   members?: number; // Not in DB yet, maybe remove or mock
 }
 
@@ -150,6 +151,7 @@ export default function AdminTeamsPage() {
               <TableRow>
                 <TableHead>팀 ID</TableHead>
                 <TableHead>팀명</TableHead>
+                <TableHead>역할</TableHead>
                 <TableHead>보유 코인</TableHead>
                 <TableHead className="text-right">관리</TableHead>
               </TableRow>
@@ -159,6 +161,15 @@ export default function AdminTeamsPage() {
                 <TableRow key={team.id}>
                   <TableCell>{team.team_id}</TableCell>
                   <TableCell className="font-medium">{team.name}</TableCell>
+                  <TableCell>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      team.role === 'admin'
+                        ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                    }`}>
+                      {team.role === 'admin' ? '관리자' : '일반 팀'}
+                    </span>
+                  </TableCell>
                   <TableCell>{team.coins.toLocaleString()} 코인</TableCell>
                   <TableCell className="text-right space-x-2">
                     <Dialog>

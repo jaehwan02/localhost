@@ -33,13 +33,29 @@ export function LoginForm({
     setError(null);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error, data } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (error) throw error;
-      // Update this route to redirect to an authenticated route. The user already has an active session.
-      router.push("/protected");
+
+      // Check user role and redirect accordingly
+      if (data.user) {
+        const { data: team } = await supabase
+          .from('teams')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        // Redirect based on role
+        if (team?.role === 'admin') {
+          router.push('/admin');
+        } else {
+          router.push('/community');
+        }
+      } else {
+        router.push('/community');
+      }
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
@@ -94,12 +110,12 @@ export function LoginForm({
               </Button>
             </div>
             <div className="mt-4 text-center text-sm">
-              Don&apos;t have an account?{" "}
+              관리자이신가요?{" "}
               <Link
                 href="/auth/sign-up"
                 className="underline underline-offset-4"
               >
-                Sign up
+                관리자 계정 만들기
               </Link>
             </div>
           </form>
