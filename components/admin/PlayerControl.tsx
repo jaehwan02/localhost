@@ -18,6 +18,11 @@ interface MediaItem {
   };
 }
 
+interface PausedSong {
+  item: MediaItem;
+  currentTime: number;
+}
+
 // Declare YouTube types
 declare global {
   interface Window {
@@ -31,6 +36,7 @@ export function PlayerControl() {
   const [isAutoPlay, setIsAutoPlay] = useState(false);
   const [currentMedia, setCurrentMedia] = useState<MediaItem | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [pausedSong, setPausedSong] = useState<PausedSong | null>(null);
   const supabase = createClient();
   const youtubePlayerRef = useRef<any>(null);
   const playerDivRef = useRef<HTMLDivElement>(null);
@@ -87,14 +93,48 @@ export function PlayerControl() {
 
     // Interrupt logic: If playing song and TTS is in queue
     if (isPlaying && currentMedia?.type === "song" && queue.some(item => item.type === "tts")) {
-      stopCurrent();
+      pauseCurrentSong();
       return;
     }
 
-    if (!isPlaying && queue.length > 0) {
+    // Play TTS if not playing and TTS is in queue
+    if (!isPlaying && queue.some(item => item.type === "tts")) {
+      const ttsItem = queue.find(item => item.type === "tts");
+      if (ttsItem) {
+        playMedia(ttsItem);
+      }
+      return;
+    }
+
+    // Resume paused song if no TTS in queue and not playing
+    if (!isPlaying && pausedSong && !queue.some(item => item.type === "tts")) {
+      resumePausedSong();
+      return;
+    }
+
+    if (!isPlaying && !pausedSong && queue.length > 0) {
       playMedia(queue[0]);
     }
-  }, [isAutoPlay, isPlaying, queue, currentMedia]);
+  }, [isAutoPlay, isPlaying, queue, currentMedia, pausedSong]);
+
+  const pauseCurrentSong = async () => {
+    if (youtubePlayerRef.current && currentMedia?.type === "song") {
+      const currentTime = youtubePlayerRef.current.getCurrentTime() || 0;
+      setPausedSong({ item: currentMedia, currentTime });
+      youtubePlayerRef.current.pauseVideo();
+    }
+    
+    setIsPlaying(false);
+    setCurrentMedia(null);
+  };
+
+  const resumePausedSong = () => {
+    if (!pausedSong) return;
+    
+    const { item, currentTime } = pausedSong;
+    setPausedSong(null);
+    playMedia(item, currentTime);
+  };
 
   const stopCurrent = async () => {
     window.speechSynthesis.cancel();
@@ -105,14 +145,11 @@ export function PlayerControl() {
     }
 
     if (currentMedia) {
-      if (currentMedia.type === "song" && queue.some(item => item.type === "tts")) {
-         await supabase.from("media_queue").update({ status: "pending" }).eq("id", currentMedia.id);
-      } else {
-         await supabase.from("media_queue").update({ status: "played" }).eq("id", currentMedia.id);
-      }
+      await supabase.from("media_queue").update({ status: "played" }).eq("id", currentMedia.id);
     }
     setIsPlaying(false);
     setCurrentMedia(null);
+    setPausedSong(null);
     fetchQueue();
   };
 
@@ -131,7 +168,7 @@ export function PlayerControl() {
     return null;
   };
 
-  const playMedia = async (item: MediaItem) => {
+  const playMedia = async (item: MediaItem, startTime: number = 0) => {
     setIsPlaying(true);
     setCurrentMedia(item);
     setQueue((prev) => prev.filter((i) => i.id !== item.id));
@@ -191,11 +228,16 @@ export function PlayerControl() {
           videoId: videoId,
           playerVars: {
             autoplay: 1,
+            start: Math.floor(startTime), // Start from saved position
           },
           events: {
             onReady: () => {
               // Video loaded successfully, clear the timeout
               clearTimeout(timeoutId);
+              // Seek to exact position if we have a fractional second
+              if (startTime > 0) {
+                youtubePlayerRef.current.seekTo(startTime, true);
+              }
             },
             onStateChange: (event: any) => {
               // 0 = ended
@@ -273,6 +315,18 @@ export function PlayerControl() {
               )}
               
               <Button onClick={handleSkip} variant="outline">Skip</Button>
+            </div>
+          ) : pausedSong ? (
+            <div className="text-center py-8 space-y-4">
+              <Badge variant="outline" className="text-lg px-4 py-1">
+                ⏸️ 일시정지됨 (TTS 대기 중)
+              </Badge>
+              <p className="text-muted-foreground">
+                {pausedSong.item.content}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                재생 위치: {Math.floor(pausedSong.currentTime / 60)}:{String(Math.floor(pausedSong.currentTime % 60)).padStart(2, '0')}
+              </p>
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
