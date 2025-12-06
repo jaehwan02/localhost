@@ -79,6 +79,20 @@ export function CreatePost() {
     e.preventDefault();
     if (!content.trim()) return;
 
+    // Validate YouTube URL for SONG command
+    if (selectedCommand === "song" || content.includes("/SONG")) {
+      const cleanContent = content
+        .replace(/\/SONG\s*/g, "")
+        .trim();
+      
+      const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
+      
+      if (!youtubeRegex.test(cleanContent)) {
+        alert("노래 신청은 YouTube 링크만 가능합니다.\n예: https://youtube.com/watch?v=...");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -124,6 +138,21 @@ export function CreatePost() {
       });
 
       if (error) throw error;
+
+      // If it's a TTS or SONG request, also add to media queue
+      if (isTTS || isSong) {
+        const { error: queueError } = await supabase.from("media_queue").insert({
+          team_id: user.id,
+          type: isTTS ? "tts" : "song",
+          content: cleanContent,
+          status: "pending",
+        });
+
+        if (queueError) {
+          console.error("Error adding to media queue:", queueError);
+          // Don't throw - post was created successfully, queue is secondary
+        }
+      }
 
       setContent("");
       setSelectedCommand(null);

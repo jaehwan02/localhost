@@ -18,13 +18,32 @@ interface MediaItem {
   };
 }
 
+// Declare YouTube types
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady: () => void;
+  }
+}
+
 export function PlayerControl() {
   const [queue, setQueue] = useState<MediaItem[]>([]);
   const [isAutoPlay, setIsAutoPlay] = useState(false);
   const [currentMedia, setCurrentMedia] = useState<MediaItem | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const supabase = createClient();
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const youtubePlayerRef = useRef<any>(null);
+  const playerDivRef = useRef<HTMLDivElement>(null);
+
+  // Load YouTube IFrame API
+  useEffect(() => {
+    if (!window.YT) {
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      const firstScriptTag = document.getElementsByTagName("script")[0];
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+    }
+  }, []);
 
   // Fetch queue and sort by priority (TTS > Song, then by time)
   const fetchQueue = async () => {
@@ -69,7 +88,6 @@ export function PlayerControl() {
     // Interrupt logic: If playing song and TTS is in queue
     if (isPlaying && currentMedia?.type === "song" && queue.some(item => item.type === "tts")) {
       stopCurrent();
-      // The next effect cycle will pick up the TTS
       return;
     }
 
@@ -80,23 +98,37 @@ export function PlayerControl() {
 
   const stopCurrent = async () => {
     window.speechSynthesis.cancel();
+    
+    // Stop YouTube player if playing
+    if (youtubePlayerRef.current && currentMedia?.type === "song") {
+      youtubePlayerRef.current.stopVideo();
+    }
+
     if (currentMedia) {
-      // If it was a song interrupted by TTS, maybe we should keep it pending?
-      // For now, let's mark it as completed to avoid infinite loops, or just reset state
-      // User requirement: "TTS가 나오면 노래를 중지하고 TTS를 무조건 우선순위"
-      // Let's just stop playback state. If it was interrupted, it's still in 'pending' in DB if we didn't update it yet.
-      // But we update status to 'playing' when we start.
-      
-      // If we want to re-queue the song, we should set it back to pending.
       if (currentMedia.type === "song" && queue.some(item => item.type === "tts")) {
          await supabase.from("media_queue").update({ status: "pending" }).eq("id", currentMedia.id);
       } else {
-         await supabase.from("media_queue").update({ status: "completed" }).eq("id", currentMedia.id);
+         await supabase.from("media_queue").update({ status: "played" }).eq("id", currentMedia.id);
       }
     }
     setIsPlaying(false);
     setCurrentMedia(null);
     fetchQueue();
+  };
+
+  const extractYouTubeVideoId = (url: string): string | null => {
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
+      /youtube\.com\/embed\/([^&\n?#]+)/,
+    ];
+
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+    return null;
   };
 
   const playMedia = async (item: MediaItem) => {
@@ -111,10 +143,9 @@ export function PlayerControl() {
       const utterance = new SpeechSynthesisUtterance(item.content);
       utterance.lang = "ko-KR";
       
-      // Safety timeout in case onend doesn't fire
       const timeoutId = setTimeout(() => {
         completeMedia(item);
-      }, 5000); // 5 seconds max for short TTS
+      }, 5000);
 
       utterance.onend = () => {
         clearTimeout(timeoutId);
@@ -122,10 +153,72 @@ export function PlayerControl() {
       };
       window.speechSynthesis.speak(utterance);
     } else {
-      // Simulate song playback for 10 seconds (since we don't have real audio files)
-      setTimeout(() => {
+      // Play YouTube video
+      const videoId = extractYouTubeVideoId(item.content);
+      
+      if (!videoId) {
+        console.error("Invalid YouTube URL:", item.content);
+        completeMedia(item);
+        return;
+      }
+
+      // Timeout fallback - if video doesn't start within 10 seconds, skip it
+      const timeoutId = setTimeout(() => {
+        console.log("YouTube video timeout - skipping");
+        if (youtubePlayerRef.current) {
+          try {
+            youtubePlayerRef.current.destroy();
+          } catch (e) {
+            // Ignore destroy errors
+          }
+        }
         completeMedia(item);
       }, 10000);
+
+      // Wait for YouTube API to be ready
+      const initPlayer = () => {
+        if (youtubePlayerRef.current) {
+          try {
+            youtubePlayerRef.current.destroy();
+          } catch (e) {
+            // Ignore destroy errors
+          }
+        }
+
+        youtubePlayerRef.current = new window.YT.Player(playerDivRef.current, {
+          height: "360",
+          width: "640",
+          videoId: videoId,
+          playerVars: {
+            autoplay: 1,
+          },
+          events: {
+            onReady: () => {
+              // Video loaded successfully, clear the timeout
+              clearTimeout(timeoutId);
+            },
+            onStateChange: (event: any) => {
+              // 0 = ended
+              if (event.data === 0) {
+                clearTimeout(timeoutId);
+                completeMedia(item);
+              }
+            },
+            onError: (event: any) => {
+              // Video unavailable, skip it
+              console.error("YouTube player error:", event.data);
+              clearTimeout(timeoutId);
+              completeMedia(item);
+            },
+          },
+        });
+      };
+
+      if (window.YT && window.YT.Player) {
+        initPlayer();
+      } else {
+        window.onYouTubeIframeAPIReady = initPlayer;
+      }
     }
   };
 
@@ -144,6 +237,9 @@ export function PlayerControl() {
   const handleSkip = () => {
     if (currentMedia) {
       window.speechSynthesis.cancel();
+      if (youtubePlayerRef.current && currentMedia.type === "song") {
+        youtubePlayerRef.current.stopVideo();
+      }
       completeMedia(currentMedia);
     }
   };
@@ -164,8 +260,18 @@ export function PlayerControl() {
               <Badge variant={currentMedia.type === "tts" ? "destructive" : "default"} className="text-lg px-4 py-1">
                 {currentMedia.type === "tts" ? "TTS Playing" : "Now Playing"}
               </Badge>
-              <h3 className="text-2xl font-bold">{currentMedia.content}</h3>
-              <p className="text-muted-foreground">Requested by {currentMedia.teams.name}</p>
+              
+              {currentMedia.type === "song" ? (
+                <div className="flex justify-center">
+                  <div ref={playerDivRef} className="rounded-lg overflow-hidden" />
+                </div>
+              ) : (
+                <>
+                  <h3 className="text-2xl font-bold">{currentMedia.content}</h3>
+                  <p className="text-muted-foreground">Requested by {currentMedia.teams.name}</p>
+                </>
+              )}
+              
               <Button onClick={handleSkip} variant="outline">Skip</Button>
             </div>
           ) : (
@@ -188,7 +294,7 @@ export function PlayerControl() {
                   <Badge variant={item.type === "tts" ? "destructive" : "secondary"}>
                     {item.type === "tts" ? "TTS" : "Song"}
                   </Badge>
-                  <span className="font-medium">{item.content}</span>
+                  <span className="font-medium truncate max-w-md">{item.content}</span>
                 </div>
                 <div className="text-sm text-muted-foreground">
                   {item.teams.name}
