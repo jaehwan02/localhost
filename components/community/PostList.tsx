@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useInView } from "react-intersection-observer";
 import { PostCard } from "./PostCard";
@@ -22,7 +22,6 @@ const POSTS_PER_PAGE = 10;
 
 export function PostList() {
   const [posts, setPosts] = useState<Post[]>([]);
-  const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
@@ -30,56 +29,70 @@ export function PostList() {
   const { ref, inView } = useInView();
   const supabase = createClient();
 
+  // Check user on mount
   useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id);
+    };
     checkUser();
-  }, []);
-
-  const checkUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    setCurrentUserId(user?.id);
-  };
-
-  const fetchPosts = useCallback(async (isInitial = false) => {
-    if (loading || (!hasMore && !isInitial)) return;
-    
-    setLoading(true);
-    
-    // Calculate range
-    const from = isInitial ? 0 : posts.length;
-    const to = from + POSTS_PER_PAGE - 1;
-
-    const { data, error } = await supabase
-      .from("posts")
-      .select("*, teams(name)")
-      .order("created_at", { ascending: false })
-      .range(from, to);
-
-    if (error) {
-      console.error("Error fetching posts:", error);
-    } else {
-      if (data.length < POSTS_PER_PAGE) {
-        setHasMore(false);
-      }
-      
-      setPosts((prev) => isInitial ? data : [...prev, ...data]);
-      setPage((prev) => prev + 1);
-    }
-    setLoading(false);
-  }, [posts.length, hasMore, loading]);
+  }, [supabase]);
 
   // Initial load
   useEffect(() => {
-    fetchPosts(true);
-  }, []);
+    const loadInitialPosts = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("posts")
+        .select("*, teams(name)")
+        .order("created_at", { ascending: false })
+        .limit(POSTS_PER_PAGE);
 
-  // Infinite scroll trigger
+      if (!error && data) {
+        setPosts(data);
+        if (data.length < POSTS_PER_PAGE) {
+          setHasMore(false);
+        }
+      }
+      setLoading(false);
+    };
+
+    loadInitialPosts();
+  }, [supabase]);
+
+  // Load more when scrolling
   useEffect(() => {
-    if (inView) {
-      fetchPosts();
-    }
-  }, [inView, fetchPosts]);
+    if (!inView || loading || !hasMore || posts.length === 0) return;
 
-  // Realtime updates for new posts
+    const loadMore = async () => {
+      setLoading(true);
+      const lastPost = posts[posts.length - 1];
+      
+      const { data, error } = await supabase
+        .from("posts")
+        .select("*, teams(name)")
+        .order("created_at", { ascending: false })
+        .lt("created_at", lastPost.created_at)
+        .limit(POSTS_PER_PAGE);
+
+      if (!error && data) {
+        // Filter duplicates
+        const newPosts = data.filter(
+          (newPost) => !posts.some((p) => p.id === newPost.id)
+        );
+        setPosts((prev) => [...prev, ...newPosts]);
+        
+        if (data.length < POSTS_PER_PAGE) {
+          setHasMore(false);
+        }
+      }
+      setLoading(false);
+    };
+
+    loadMore();
+  }, [inView]); // Only depend on inView
+
+  // Realtime updates
   useEffect(() => {
     const channel = supabase
       .channel("realtime-feed")
@@ -91,7 +104,6 @@ export function PostList() {
           table: "posts",
         },
         async (payload) => {
-          // Fetch the new post with team details
           const { data } = await supabase
             .from("posts")
             .select("*, teams(name)")
@@ -108,7 +120,7 @@ export function PostList() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [supabase]);
 
   return (
     <div className="space-y-6 pb-8">
