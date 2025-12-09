@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useInView } from "react-intersection-observer";
+import { PostCard } from "./PostCard";
+import { Loader2 } from "lucide-react";
 
 interface Post {
   id: string;
@@ -17,15 +18,71 @@ interface Post {
   };
 }
 
+const POSTS_PER_PAGE = 10;
+
 export function PostList() {
   const [posts, setPosts] = useState<Post[]>([]);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
+  
+  const { ref, inView } = useInView();
   const supabase = createClient();
 
   useEffect(() => {
-    fetchPosts();
+    checkUser();
+  }, []);
 
+  const checkUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setCurrentUserId(user?.id);
+  };
+
+  const fetchPosts = useCallback(async (isInitial = false) => {
+    if (loading || (!hasMore && !isInitial)) return;
+    
+    setLoading(true);
+    
+    // Calculate range
+    const from = isInitial ? 0 : posts.length;
+    const to = from + POSTS_PER_PAGE - 1;
+
+    const { data, error } = await supabase
+      .from("posts")
+      .select("*, teams(name)")
+      .order("created_at", { ascending: false })
+      .range(from, to);
+
+    if (error) {
+      console.error("Error fetching posts:", error);
+    } else {
+      if (data.length < POSTS_PER_PAGE) {
+        setHasMore(false);
+      }
+      
+      setPosts((prev) => isInitial ? data : [...prev, ...data]);
+      setPage((prev) => prev + 1);
+    }
+    setLoading(false);
+  }, [posts.length, hasMore, loading]);
+
+  // Initial load
+  useEffect(() => {
+    fetchPosts(true);
+  }, []);
+
+  // Infinite scroll trigger
+  useEffect(() => {
+    if (inView) {
+      fetchPosts();
+    }
+  }, [inView, fetchPosts]);
+
+  // Realtime updates for new posts
+  useEffect(() => {
     const channel = supabase
-      .channel("realtime-posts")
+      .channel("realtime-feed")
       .on(
         "postgres_changes",
         {
@@ -33,9 +90,17 @@ export function PostList() {
           schema: "public",
           table: "posts",
         },
-        (payload) => {
+        async (payload) => {
           // Fetch the new post with team details
-          fetchNewPost(payload.new.id);
+          const { data } = await supabase
+            .from("posts")
+            .select("*, teams(name)")
+            .eq("id", payload.new.id)
+            .single();
+            
+          if (data) {
+            setPosts((prev) => [data, ...prev]);
+          }
         }
       )
       .subscribe();
@@ -45,72 +110,19 @@ export function PostList() {
     };
   }, []);
 
-  const fetchPosts = async () => {
-    const { data, error } = await supabase
-      .from("posts")
-      .select("*, teams(name)")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Error fetching posts:", error);
-    } else {
-      setPosts(data || []);
-    }
-  };
-
-  const fetchNewPost = async (id: string) => {
-    const { data, error } = await supabase
-      .from("posts")
-      .select("*, teams(name)")
-      .eq("id", id)
-      .single();
-
-    if (!error && data) {
-      setPosts((prev) => [data, ...prev]);
-    }
-  };
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-6 pb-8">
       {posts.map((post) => (
-        <Card key={post.id} className="border-border/50 bg-card/50 backdrop-blur-sm">
-          <CardContent className="p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-secondary">{post.teams?.name || "Unknown Team"}</span>
-                {post.is_song && (
-                  <Badge variant="outline" className="text-xs">
-                    🎵 노래 신청
-                  </Badge>
-                )}
-                {post.is_tts && (
-                  <Badge variant="outline" className="text-xs">
-                    🗣️ TTS
-                  </Badge>
-                )}
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {new Date(post.created_at).toLocaleTimeString()}
-              </span>
-            </div>
-            <p className="text-foreground/90 leading-relaxed">{post.content}</p>
-            <div className="flex gap-4 pt-2">
-              <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors">
-                <span>👍</span>
-                <span>0</span>
-              </button>
-              <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-secondary transition-colors">
-                <span>🔥</span>
-                <span>0</span>
-              </button>
-              <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-accent transition-colors">
-                <span>💬</span>
-                <span>0</span>
-              </button>
-            </div>
-          </CardContent>
-        </Card>
+        <PostCard key={post.id} post={post} currentUserId={currentUserId} />
       ))}
+      
+      {/* Loading indicator / Sentinel */}
+      <div ref={ref} className="flex justify-center py-4">
+        {loading && <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />}
+        {!hasMore && posts.length > 0 && (
+          <p className="text-sm text-muted-foreground">모든 게시글을 불러왔습니다.</p>
+        )}
+      </div>
     </div>
   );
 }
