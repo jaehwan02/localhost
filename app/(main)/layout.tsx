@@ -1,4 +1,5 @@
 import { Header } from "@/components/layout/Header";
+import { Sidebar } from "@/components/layout/Sidebar";
 
 export default function MainLayout({
   children,
@@ -6,11 +7,14 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col">
-      <Header />
-      <main className="flex-1 container max-w-screen-2xl py-6">
-        {children}
-      </main>
+    <div className="flex min-h-screen">
+      <Sidebar />
+      <div className="flex-1 flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-1 container max-w-screen-2xl py-6">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

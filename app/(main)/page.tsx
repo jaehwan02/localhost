@@ -9,17 +9,17 @@ export default function Home() {
           Localhost
         </h1>
         <p className="text-xl text-muted-foreground max-w-[600px]">
-          The ultimate gamified platform for hackathon operations.
-          Connect, compete, and enjoy the vibe.
+          해커톤 운영을 위한 최고의 게이미피케이션 플랫폼.
+          소통하고, 경쟁하고, 분위기를 즐기세요.
         </p>
       </div>
       
       <div className="flex gap-4">
         <Button asChild size="lg">
-          <Link href="/login">Team Login</Link>
+          <Link href="/login">팀 로그인</Link>
         </Button>
         <Button variant="outline" size="lg" asChild>
-          <Link href="/community">Enter as Guest</Link>
+          <Link href="/community">게스트로 입장</Link>
         </Button>
       </div>
     </div>

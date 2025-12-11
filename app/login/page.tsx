@@ -8,23 +8,23 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm border-border/50 bg-card/50 backdrop-blur-sm">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold tracking-tight">Team Login</CardTitle>
+          <CardTitle className="text-2xl font-bold tracking-tight">팀 로그인</CardTitle>
           <CardDescription>
-            Enter your Team ID and Password provided by Admin
+            관리자가 제공한 팀 ID와 비밀번호를 입력하세요
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Input type="text" placeholder="Team ID" />
+            <Input type="text" placeholder="팀 ID" />
           </div>
           <div className="space-y-2">
-            <Input type="password" placeholder="Password" />
+            <Input type="password" placeholder="비밀번호" />
           </div>
         </CardContent>
         <CardFooter className="flex flex-col space-y-2">
-          <Button className="w-full">Login</Button>
+          <Button className="w-full">로그인</Button>
           <Button variant="link" className="text-xs text-muted-foreground" asChild>
-            <Link href="/">Back to Home</Link>
+            <Link href="/">홈으로 돌아가기</Link>
           </Button>
         </CardFooter>
       </Card>

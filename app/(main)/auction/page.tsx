@@ -6,10 +6,10 @@ export default function AuctionPage() {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Live Auction</h1>
+        <h1 className="text-3xl font-bold tracking-tight">실시간 경매</h1>
         <div className="flex items-center gap-2 bg-secondary/10 px-4 py-2 rounded-full border border-secondary/20">
           <span className="text-xl">💰</span>
-          <span className="font-bold text-secondary">1,250 Coins</span>
+          <span className="font-bold text-secondary">1,250 코인</span>
         </div>
       </div>
 
@@ -20,12 +20,12 @@ export default function AuctionPage() {
             <div className="flex justify-between items-start">
               <div>
                 <span className="inline-block px-2 py-1 rounded bg-error/20 text-error text-xs font-bold mb-2 animate-pulse">
-                  LIVE NOW
+                  진행 중
                 </span>
-                <CardTitle className="text-3xl">Mechanical Keyboard</CardTitle>
+                <CardTitle className="text-3xl">기계식 키보드</CardTitle>
               </div>
               <div className="text-right">
-                <p className="text-sm text-muted-foreground">Time Left</p>
+                <p className="text-sm text-muted-foreground">남은 시간</p>
                 <p className="text-2xl font-mono font-bold text-error">00:45</p>
               </div>
             </div>
@@ -36,13 +36,13 @@ export default function AuctionPage() {
             </div>
             <div className="grid grid-cols-2 gap-4 text-center">
               <div className="p-4 rounded-lg bg-background border">
-                <p className="text-sm text-muted-foreground">Current Bid</p>
-                <p className="text-2xl font-bold text-primary">450 Coins</p>
-                <p className="text-xs text-muted-foreground">by Team 3</p>
+                <p className="text-sm text-muted-foreground">현재 입찰가</p>
+                <p className="text-2xl font-bold text-primary">450 코인</p>
+                <p className="text-xs text-muted-foreground">Team 3 입찰</p>
               </div>
               <div className="p-4 rounded-lg bg-background border">
-                <p className="text-sm text-muted-foreground">Starting Price</p>
-                <p className="text-2xl font-bold">100 Coins</p>
+                <p className="text-sm text-muted-foreground">시작가</p>
+                <p className="text-2xl font-bold">100 코인</p>
               </div>
             </div>
           </CardContent>
@@ -53,8 +53,8 @@ export default function AuctionPage() {
               <Button variant="outline" className="flex-1">+100</Button>
             </div>
             <div className="flex w-full gap-2">
-              <Input type="number" placeholder="Custom Amount" className="flex-1" />
-              <Button className="flex-1 bg-primary hover:bg-primary/90">Place Bid</Button>
+              <Input type="number" placeholder="직접 입력" className="flex-1" />
+              <Button className="flex-1 bg-primary hover:bg-primary/90">입찰하기</Button>
             </div>
           </CardFooter>
         </Card>
@@ -63,7 +63,7 @@ export default function AuctionPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Bid History</CardTitle>
+              <CardTitle>입찰 기록</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-4">
@@ -87,22 +87,22 @@ export default function AuctionPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Upcoming Items</CardTitle>
+              <CardTitle>다음 경매 물품</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-4">
                 <li className="flex items-center gap-4">
                   <div className="h-10 w-10 bg-muted rounded flex items-center justify-center">🎧</div>
                   <div>
-                    <p className="font-medium">Noise Cancelling Headphones</p>
-                    <p className="text-xs text-muted-foreground">Starts in 15m</p>
+                    <p className="font-medium">노이즈 캔슬링 헤드폰</p>
+                    <p className="text-xs text-muted-foreground">15분 후 시작</p>
                   </div>
                 </li>
                 <li className="flex items-center gap-4">
                   <div className="h-10 w-10 bg-muted rounded flex items-center justify-center">🍕</div>
                   <div>
-                    <p className="font-medium">Pizza Party Voucher</p>
-                    <p className="text-xs text-muted-foreground">Starts in 45m</p>
+                    <p className="font-medium">피자 파티 이용권</p>
+                    <p className="text-xs text-muted-foreground">45분 후 시작</p>
                   </div>
                 </li>
               </ul>

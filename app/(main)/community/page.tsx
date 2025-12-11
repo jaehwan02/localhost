@@ -6,8 +6,8 @@ export default function CommunityPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Community Feed</h1>
-        <Button>Write Post</Button>
+        <h1 className="text-3xl font-bold tracking-tight">커뮤니티 피드</h1>
+        <Button>글쓰기</Button>
       </div>
 
       {/* Write Post Input (Quick) */}
@@ -17,7 +17,7 @@ export default function CommunityPage() {
             <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
               T1
             </div>
-            <Input placeholder="What's happening? (TTS/Song requests available)" />
+            <Input placeholder="무슨 일이 일어나고 있나요? (TTS/신청곡 요청 가능)" />
           </div>
         </CardContent>
       </Card>
@@ -38,7 +38,7 @@ export default function CommunityPage() {
                 {i % 2 === 0 && (
                   <div className="mt-1 flex gap-2">
                     <span className="inline-flex items-center rounded-full border border-accent/50 bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">
-                      🎵 Song Request
+                      🎵 노래 신청
                     </span>
                   </div>
                 )}
