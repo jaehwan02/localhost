@@ -1,9 +1,9 @@
 # Localhost - 해커톤 이벤트 관리 플랫폼
 
-**제출자**: [학생 이름]
+**제출자**: 이재환
 **제출일**: 2025년 12월 18일
-**배포 URL**: [배포 URL 추가 예정]
-**시연 영상**: [YouTube 링크 추가 예정]
+**배포 URL**: https://localhost-five-chi.vercel.app
+**시연 영상**: https://youtu.be/kME_uUy1d_4
 
 ---
 
@@ -341,7 +341,7 @@ npm run dev
 ## 🌐 배포 정보
 
 ### 배포 URL
-[배포 URL 추가 예정]
+https://localhost-five-chi.vercel.app
 
 ### 배포 환경
 - **Frontend**: Vercel (자동 배포)
@@ -357,7 +357,7 @@ npm run dev
 
 ## 🎥 시연 동영상
 
-**YouTube 링크**: [링크 추가 예정]
+**YouTube 링크**: https://youtu.be/kME_uUy1d_4
 
 ### 시연 내용 (3분 30초)
 1. **프로젝트 소개 및 개선 목표** (30초)
@@ -466,9 +466,9 @@ with-supabase-app/
 ## 👥 제작자
 
 **학생 정보**:
-- 이름: [학생 이름]
-- 학번: [학번]
-- 이메일: [이메일]
-- GitHub: [GitHub 프로필]
+- 이름: 이재환
+- 학번: 2112
+- 이메일: jhrick0129@gmail.com
+- GitHub: jaehwan02
 
 **제출일**: 2025년 12월 18일
